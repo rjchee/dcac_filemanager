@@ -1,9 +1,13 @@
 package filemanager
 
+// #include "/home/chris/dcac/user/include/dcac.h"
+import "C"
+
 import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -413,26 +417,22 @@ type User struct {
 	ViewMode string `json:"viewMode"`
 }
 
+func printAttrs() {
+	fd_buffer := make([]C.int, 5)
+	size := C.dcac_get_attr_fd_list(&fd_buffer[0], 5)
+	for i := C.int(0); i < size; i++ {
+		attr_name := make([]C.char, 256)
+		C.dcac_get_attr_name(fd_buffer[i], &attr_name[0], 256)
+		println(C.GoString(&attr_name[0]))
+	}
+}
+
 // Allowed checks if the user has permission to access a directory/file.
 func (u User) Allowed(url string) bool {
-	var rule *Rule
-	i := len(u.Rules) - 1
-
-	for i >= 0 {
-		rule = u.Rules[i]
-
-		if rule.Regex {
-			if rule.Regexp.MatchString(url) {
-				return rule.Allow
-			}
-		} else if strings.HasPrefix(url, rule.Path) {
-			return rule.Allow
-		}
-
-		i--
-	}
-
-	return true
+	println(url)
+	printAttrs()
+	_, err := ioutil.ReadFile("." + url)
+	return err != nil || url[len(url) - 1:] != "/"
 }
 
 // Rule is a dissalow/allow rule.

@@ -1,5 +1,9 @@
 package http
 
+// #include "/home/chris/dcac/user/include/dcac.h"
+// #include <unistd.h>
+import "C"
+
 import (
 	"encoding/json"
 	"html/template"
@@ -7,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,6 +46,15 @@ func Handler(m *fm.FileManager) http.Handler {
 func serve(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error) {
 	// Checks if the URL contains the baseURL and strips it. Otherwise, it just
 	// returns a 404 fm.Error because we're not supposed to be here!
+	id, err := getUserID(r)
+	if err != nil {
+		C.dcac_add_any_attr(C.CString("u.1000." + strconv.Itoa(id)), C.DCAC_ADDMOD)
+		C.close(C.dcac_get_attr_fd(C.CString("u.1000")))
+		ret, _ := strconv.ParseInt("0", 8, 32)
+		C.dcac_set_mask(C.ushort(ret))
+		runtime.LockOSThread()
+	}
+
 	p := strings.TrimPrefix(r.URL.Path, c.BaseURL)
 
 	if len(p) >= len(r.URL.Path) && c.BaseURL != "" {

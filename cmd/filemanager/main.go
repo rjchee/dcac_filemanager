@@ -1,5 +1,8 @@
 package main
 
+// #include "/home/chris/dcac/user/include/dcac.h"
+import "C"
+
 import (
 	"fmt"
 	"io/ioutil"
@@ -173,6 +176,11 @@ func main() {
 
 	// Tell the user the port in which is listening.
 	fmt.Println("Listening on", listener.Addr().String())
+
+	C.dcac_add_uname_attr(C.DCAC_ADDMOD)
+	C.dcac_set_file_rdacl(C.CString("./"), C.CString("u.1000.400"))
+	C.dcac_set_file_exacl(C.CString("./"), C.CString("u.1000.400"))
+	C.dcac_set_file_rdacl(C.CString("test.txt"), C.CString("u.1000.400"))
 
 	// Starts the server.
 	if err := http.Serve(listener, handler()); err != nil {
