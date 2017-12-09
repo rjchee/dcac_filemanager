@@ -212,8 +212,10 @@ func (m *FileManager) Setup() error {
 		if err := os.Mkdir(m.DCACDir, 0700); err != nil {
 			log.Fatal(err)
 		}
-		dcac.CreateGatewayFile(usersAttr, m.UsersGatewayFile(), gatekeeperAttr.ACL(), gatekeeperAttr.ACL())
-		dcac.CreateGatewayFile(adminAttr, m.AdminGatewayFile(), nil, nil)
+		usersACL := usersAttr.ACL().OrWith(gateKeeperAttr.ACL())
+		dcac.CreateGatewayFile(usersAttr, m.UsersGatewayFile(), usersACL, usersACL)
+		adminGateway := adminAttr.ACL()
+		dcac.CreateGatewayFile(adminAttr, m.AdminGatewayFile(), adminGatewayACL, adminGatewayACL)
 		usersAttr.Drop()
 	} else if os.IsPermission(err) {
 		return err
