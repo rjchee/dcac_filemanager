@@ -1,8 +1,5 @@
 package main
 
-// #include "/home/chris/dcac/user/include/dcac.h"
-import "C"
-
 import (
 	"fmt"
 	"io/ioutil"
@@ -17,10 +14,10 @@ import (
 
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/hacdias/filemanager"
-	"github.com/hacdias/filemanager/bolt"
-	h "github.com/hacdias/filemanager/http"
-	"github.com/hacdias/filemanager/staticgen"
+	"github.com/rjchee/dcac_filemanager"
+	"github.com/rjchee/dcac_filemanager/bolt"
+	h "github.com/rjchee/dcac_filemanager/http"
+	"github.com/rjchee/dcac_filemanager/staticgen"
 	"github.com/hacdias/fileutils"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -76,6 +73,7 @@ func setupViper() {
 	viper.SetDefault("Address", "")
 	viper.SetDefault("Port", "0")
 	viper.SetDefault("Database", "./filemanager.db")
+	viper.SetDefault("DCACDir", "./.dcac")
 	viper.SetDefault("Scope", ".")
 	viper.SetDefault("Logger", "stdout")
 	viper.SetDefault("Commands", []string{"git", "svn", "hg"})
@@ -177,11 +175,6 @@ func main() {
 	// Tell the user the port in which is listening.
 	fmt.Println("Listening on", listener.Addr().String())
 
-	C.dcac_add_uname_attr(C.DCAC_ADDMOD)
-	C.dcac_set_file_rdacl(C.CString("./"), C.CString("u.1000.400"))
-	C.dcac_set_file_exacl(C.CString("./"), C.CString("u.1000.400"))
-	C.dcac_set_file_rdacl(C.CString("test.txt"), C.CString("u.1000.400"))
-
 	// Starts the server.
 	if err := http.Serve(listener, handler()); err != nil {
 		log.Fatal(err)
@@ -221,6 +214,7 @@ func handler() http.Handler {
 		NewFS: func(scope string) filemanager.FileSystem {
 			return fileutils.Dir(scope)
 		},
+		DCACDir: viper.GetString("DCACDir")
 	}
 
 	err = fm.Setup()

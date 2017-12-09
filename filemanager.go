@@ -1,11 +1,9 @@
 package filemanager
 
-// #include "/home/chris/dcac/user/include/dcac.h"
-import "C"
-
 import (
 	"crypto/rand"
 	"errors"
+	"path/filepath"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -23,6 +21,8 @@ import (
 	"github.com/hacdias/fileutils"
 	"github.com/mholt/caddy"
 	"github.com/robfig/cron"
+
+	"github.com/rjchee/dcac_filemanager/dcac"
 )
 
 const (
@@ -93,6 +93,9 @@ type FileManager struct {
 
 	// NewFS should build a new file system for a given path.
 	NewFS FSBuilder
+
+	// name of the directory to hold DCAC state
+	DCACDir string
 }
 
 var commandEvents = []string{
@@ -189,6 +192,33 @@ func (m *FileManager) Setup() error {
 		return err
 	}
 
+	// initialize dcac state
+	pAttr := dcac.AddUnameAttr(dcac.ADDMOD)
+	fmAttr := pAttr.AddSub("fm", dcac.ADDMOD)
+	// application should not hold onto parent attribute
+	defer dcac.DropAttr(fmAttr)
+	dcac.DropAttr(pAttr)
+	// process holds on to gatekeeper attribute indefinitely
+	gatekeeperAttr := fmAttr.AddSub("gatekeeper", dcac.ADDMOD)
+	// admin rights allow users to modify any file's ACL
+	adminAttr := fmAttr.AddSub("admin", dcac.ADDMOD)
+	defer adminAttr.Drop()
+	if _, err := os.Stat(m.DCACDir); os.IsNotExist(err) {
+		// create a gateway attribute for gatekeeper
+		usersAttr := fmAttr.AddSub("users", dcac.ADDMOD)
+		if err := os.Mkdir(m.DCACDir, 0700); err != nil {
+			log.Fatal(err)
+		}
+		dcac.CreateGatewayFile(usersAttr, m.UsersGatewayFile(), gatekeeperAttr.ACL(), gatekeeperAttr.ACL())
+		dcac.CreateGatewayFile(adminAttr, m.AdminGatewayFile(), nil, nil)
+		usersAttr.Drop()
+	} else if os.isPermission(err) {
+		return err
+	}
+	if err := dcac.SetDefMdACL(adminAttr.ACL()); err != nil {
+		log.Fatal(err)
+	}
+
 	// If there are no users in the database, it creates a new one
 	// based on 'base' User that must be provided by the function caller.
 	if len(users) == 0 {
@@ -209,7 +239,7 @@ func (m *FileManager) Setup() error {
 		u.AllowPublish = true
 
 		// Saves the user to the database.
-		if err := m.Store.Users.Save(&u); err != nil {
+		if err := m.SaveUser(&u); err != nil {
 			return err
 		}
 	}
@@ -227,8 +257,152 @@ func (m *FileManager) Setup() error {
 
 	m.Cron.AddFunc("@hourly", m.ShareCleaner)
 	m.Cron.Start()
+	dcac.SetPMask(0)
 
 	return nil
+}
+
+func (m FileManager) UsersGatewayFile() string {
+	return filepath.Join(m.DCACDir, "fm_user.gate")
+}
+
+func (m FileManager) AdminGatewayFile() string {
+	return filepath.Join(m.DCACDir, "fm_admin.gate")
+}
+
+func (m *FileManager) SaveUser(u *User) error {
+	err := m.setupUserDCAC(u)
+	if err != nil {
+		return err
+	}
+	return m.Store.Users.Save(u)
+}
+
+func (m *FileManager) UpdateUser(u *User) error {
+	err := m.updateUserDCAC(u)
+	if err != nil {
+		return err
+	}
+	return m.Store.Users.Save(u)
+}
+
+func (m *FileManager) updateUserDCAC(old, new *.User) error {
+	adminChanged := old.Admin != new.Admin
+	scopeChanged := old.Scope != new.Scope
+	permsChanged := old.AllowNew != new.AllowNew || old.AllowEdit != new.AllowEdit || len(old.Rules) != len(new.Rules)
+	for i := 0; !rulesChanged && i < len(old.Rules); i++ {
+		o, n := old.Rules[i], new.Rules[i]
+		rulesChanged = o.Regex != n.Regex || o.Allow != n.Allow || o.Path != n.Path || o.Regex && o.Regexp.Raw != n.Regexp.Raw
+	}
+	if adminChanged || scopeChanged || rulesChanged || permsChanged {
+		userAttr, err := m.getUserAttr(old)
+		if err != nil {
+			return err
+		}
+		if adminChanged {
+			m.setAdminDCAC(userAttr, new.Admin)
+		}
+		if scopeChanged {
+			// remove rights from old scope
+			if err := filepath.Walk(old.Scope, func (path string, info os.FileInfo, err error) error {
+				isDir := info.IsDir()
+				if isDir && err != nil {
+					log.Printf("Could not open directory %s\n", path)
+					return filepath.SkipDir
+				}
+				if err != nil {
+					log.Printf("Could not open file %s\n", path)
+					return nil
+				}
+				userACL := userAttr.ACL()
+				err = dcac.ModifyFileACLs(path, nil, &dcac.FileACLs{Read: userACL, Write: userACL})
+				if err != nil {
+					log.Println(err)
+				}
+				return nil
+			}); err != nil {
+				userAttr.Drop()
+				return err
+			}
+		}
+		userAttr.Drop()
+		m.setupUserDCAC(new)
+	}
+	return nil
+}
+
+func (m FileManager) getUserAttr(u *User) (dcac.Attr, error) {
+	usersAttr, err := dcac.OpenGatewayFile(m.UsersGatewayFile())
+	if err != nil {
+		return dcac.Attr{}, err
+	}
+	userAttr := usersAttr.AddSub(u.Username, dcac.ADDMOD)
+	usersAttr.Drop()
+	return userAttr, nil
+}
+
+func (m *FileManager) setAdminDCAC(userAttr dcac.Attr, isAdmin bool) error {
+	userACL := userAttr.ACL()
+	aclDiff := &dcac.FileACLs{Read: userACL, Modify: userACL}
+	if isAdmin {
+		return dcac.ModifyFileACLs(m.AdminGatewayFile(), aclDiff, nil)
+	}
+	return dcac.ModifyFileACLs(m.AdminGatewayFile(), nil, aclDiff)
+}
+
+func (m *FileManager) setupUserDCAC(u *User) error {
+	userAttr, err := m.getUserAttr(u)
+	if err != nil {
+		return err
+	}
+	defer userAttr.Drop()
+	if u.Admin {
+		// add this user to the admin gateway's ACL
+		if err := m.setAdminDCAC(userAttr, u.Admin); err != nil {
+			return err
+		}
+	}
+	return filepath.Walk(u.Scope, func (path string, info os.FileInfo, err error) error {
+		isDir := info.IsDir()
+		if isDir && err != nil {
+			log.Printf("Could not open directory %s\n", path)
+			return filepath.SkipDir
+		}
+		if err != nil {
+			log.Printf("Could not open file %s\n", path)
+			return nil
+		}
+		allow := m.rulesAllow(u.Rules, path)
+		rd, wr := allow, allow && (isDir && u.AllowNew || !isDir && u.AllowEdit)
+		add, remove := &dcac.FileACLs{}, &dcac.FileACLs{}
+		if rd {
+			add.Read = userAttr.ACL()
+		} else {
+			remove.Read = userAttr.ACL()
+		}
+		if wr {
+			add.Write = userAttr.ACL()
+		} else {
+			remove.Write = userAttr.ACL()
+		}
+		err = dcac.ModifyFileACLs(path, add, remove)
+		if err != nil {
+			log.Println(err)
+		}
+		return nil
+	})
+}
+
+func (m FileManager) rulesAllow(rules []*Rule, path string) bool {
+	for i := len(rules) - 1; i >= 0; i-- {
+		rule := rules[i]
+		if rule.Regex {
+			if rule.Regexp.MatchString(path) {
+				return rule.Allow
+			}
+		}
+	}
+	return true
 }
 
 // RootURL returns the actual URL where
@@ -417,20 +591,10 @@ type User struct {
 	ViewMode string `json:"viewMode"`
 }
 
-func printAttrs() {
-	fd_buffer := make([]C.int, 5)
-	size := C.dcac_get_attr_fd_list(&fd_buffer[0], 5)
-	for i := C.int(0); i < size; i++ {
-		attr_name := make([]C.char, 256)
-		C.dcac_get_attr_name(fd_buffer[i], &attr_name[0], 256)
-		println(C.GoString(&attr_name[0]))
-	}
-}
-
 // Allowed checks if the user has permission to access a directory/file.
 func (u User) Allowed(url string) bool {
 	println(url)
-	printAttrs()
+	dcac.PrintAttrs()
 	_, err := ioutil.ReadFile("." + url)
 	return err != nil || url[len(url) - 1:] != "/"
 }

@@ -3,9 +3,9 @@ package hugo
 import (
 	"net/http"
 
-	"github.com/hacdias/filemanager"
-	"github.com/hacdias/filemanager/caddy/parser"
-	h "github.com/hacdias/filemanager/http"
+	"github.com/rjchee/dcac_filemanager"
+	"github.com/rjchee/dcac_filemanager/caddy/parser"
+	h "github.com/rjchee/dcac_filemanager/http"
 	"github.com/mholt/caddy"
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 )

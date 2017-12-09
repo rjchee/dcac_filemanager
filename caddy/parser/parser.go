@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/asdine/storm"
-	"github.com/hacdias/filemanager"
-	"github.com/hacdias/filemanager/bolt"
-	"github.com/hacdias/filemanager/staticgen"
+	"github.com/rjchee/dcac_filemanager"
+	"github.com/rjchee/dcac_filemanager/bolt"
+	"github.com/rjchee/dcac_filemanager/staticgen"
 	"github.com/hacdias/fileutils"
 	"github.com/mholt/caddy"
 	"github.com/mholt/caddy/caddyhttp/httpserver"

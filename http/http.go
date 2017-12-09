@@ -1,9 +1,5 @@
 package http
 
-// #include "/home/chris/dcac/user/include/dcac.h"
-// #include <unistd.h>
-import "C"
-
 import (
 	"encoding/json"
 	"html/template"
@@ -16,7 +12,8 @@ import (
 	"strings"
 	"time"
 
-	fm "github.com/hacdias/filemanager"
+	fm "github.com/rjchee/dcac_filemanager"
+	"github.com/rjchee/dcac_filemanager/dcac"
 )
 
 // Handler returns a function compatible with http.HandleFunc.
@@ -46,15 +43,6 @@ func Handler(m *fm.FileManager) http.Handler {
 func serve(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error) {
 	// Checks if the URL contains the baseURL and strips it. Otherwise, it just
 	// returns a 404 fm.Error because we're not supposed to be here!
-	id, err := getUserID(r)
-	if err != nil {
-		C.dcac_add_any_attr(C.CString("u.1000." + strconv.Itoa(id)), C.DCAC_ADDMOD)
-		C.close(C.dcac_get_attr_fd(C.CString("u.1000")))
-		ret, _ := strconv.ParseInt("0", 8, 32)
-		C.dcac_set_mask(C.ushort(ret))
-		runtime.LockOSThread()
-	}
-
 	p := strings.TrimPrefix(r.URL.Path, c.BaseURL)
 
 	if len(p) >= len(r.URL.Path) && c.BaseURL != "" {
@@ -68,6 +56,32 @@ func serve(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error) {
 	if r.URL.Path == "/sw.js" {
 		return renderFile(c, w, "sw.js")
 	}
+
+	// add the user's credentials to OS thread context
+	if id, err := getUserID(r); err == nil {
+		if user, err := c.Store.Users.Get(id, c.NewFS); err == nil {
+			// TODO: check if locking is required
+			//runtime.LockOSThread()
+			//defer runtime.UnlockOSThread()
+			usersAttr, gatewayErr := dcac.OpenGatewayFile(c.UsersGatewayFile())
+			if gatewayErr != nil {
+				log.Printf("error opening gateway: %s", gatewayErr)
+				usersAttr.Drop()
+				// abuse the bad gateway http response
+				return http.StatusBadGateway, nil
+			}
+			userAttr := usersAttr.AddSub(user.Username)
+			println("Acquired user attr")
+			defer userAttr.Drop()
+			// try to grab the admin attribute as well (which will fail if the user is not an Admin)
+			if adminAttr, err := dcac.OpenGatewayFile(c.AdminGatewayFile()); err == nil {
+				defer adminAttr.Drop()
+			}
+			usersAttr.Drop()
+			dcac.PrintAttrs()
+		}
+	}
+
 
 	// Checks if this request is made to the static assets folder. If so, and
 	// if it is a GET request, returns with the asset. Otherwise, returns

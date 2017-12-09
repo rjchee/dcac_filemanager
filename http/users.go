@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	fm "github.com/hacdias/filemanager"
+	fm "github.com/rjchee/dcac_filemanager"
 )
 
 type modifyRequest struct {
@@ -190,7 +190,7 @@ func usersPostHandler(c *fm.Context, w http.ResponseWriter, r *http.Request) (in
 	u.ViewMode = fm.MosaicViewMode
 
 	// Saves the user to the database.
-	err = c.Store.Users.Save(u)
+	err = c.SaveUser(u)
 	if err == fm.ErrExist {
 		return http.StatusConflict, err
 	}
@@ -374,7 +374,7 @@ func usersPutHandler(c *fm.Context, w http.ResponseWriter, r *http.Request) (int
 
 	// Updates the whole User struct because we always are supposed
 	// to send a new entire object.
-	err = c.Store.Users.Update(u)
+	err = c.UpdateUser(u)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

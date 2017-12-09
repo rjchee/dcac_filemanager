@@ -4,13 +4,13 @@ wherever you are. To use this package as a middleware for your app,
 you'll need to import both File Manager and File Manager HTTP packages.
 
 	import (
-		fm "github.com/hacdias/filemanager"
-		h "github.com/hacdias/filemanager/http"
+		fm "github.com/rjchee/dcac_filemanager"
+		h "github.com/rjchee/dcac_filemanager/http"
 	)
 
 Then, you should create a new FileManager object with your options. In this
 case, I'm using BoltDB (via Storm package) as a Store. So, you'll also need
-to import "github.com/hacdias/filemanager/bolt".
+to import "github.com/rjchee/dcac_filemanager/bolt".
 
 	db, _ := storm.Open("bolt.db")
 
