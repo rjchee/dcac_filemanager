@@ -48,7 +48,8 @@ func (a ACL) OrWith(o ACL) ACL {
 	for _, attr := range a {
 		set[attr] = struct{}{}
 	}
-	var newACL ACL
+	newACL := make([]string, len(a))
+	copy(newACL, a)
 	for _, attr := range o {
 		if _, ok := set[attr]; !ok {
 			newACL = append(newACL, attr)
@@ -115,7 +116,9 @@ func (a AttrName) SubAttr(name string) AttrName {
 }
 
 func (a AttrName) Parent() AttrName {
-	return a[:len(a)-1]
+	newAttrName := make([]string, len(a))
+	copy(newAttrName, a)
+	return newAttrName[:len(a)-1]
 }
 
 func NewAttrName(s string) AttrName {
