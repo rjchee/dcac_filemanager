@@ -323,6 +323,10 @@ func (m *FileManager) updateUserDCAC(old, new *User) error {
 			m.setAdminDCAC(userAttr, new.Admin)
 		}
 		if scopeChanged {
+			dcacFileInfo, err := os.Stat(m.DCACDir)
+			if err != nil {
+				return err
+			}
 			// remove rights from old scope
 			if err := filepath.Walk(old.Scope, func (path string, info os.FileInfo, err error) error {
 				isDir := info.IsDir()
@@ -333,6 +337,9 @@ func (m *FileManager) updateUserDCAC(old, new *User) error {
 				if err != nil {
 					log.Printf("Could not open file %s\n", path)
 					return nil
+				}
+				if os.SameFile(dcacFileInfo, info) {
+					return filepath.SkipDir
 				}
 				userACL := userAttr.ACL()
 				err = dcac.ModifyFileACLs(path, nil, &dcac.FileACLs{Read: userACL, Write: userACL})
@@ -382,6 +389,10 @@ func (m *FileManager) setupUserDCAC(u *User) error {
 			return err
 		}
 	}
+	dcacFileInfo, err := os.Stat(m.DCACDir)
+	if err != nil {
+		return err
+	}
 	return filepath.Walk(u.Scope, func (path string, info os.FileInfo, err error) error {
 		isDir := info.IsDir()
 		if isDir && err != nil {
@@ -391,6 +402,9 @@ func (m *FileManager) setupUserDCAC(u *User) error {
 		if err != nil {
 			log.Printf("Could not open file %s\n", path)
 			return nil
+		}
+		if os.SameFile(dcacFileInfo, info) {
+			return filepath.SkipDir
 		}
 		allow := m.rulesAllow(u.Rules, path)
 		rd, wr := allow, allow && (isDir && u.AllowNew || !isDir && u.AllowEdit)
