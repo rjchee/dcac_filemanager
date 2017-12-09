@@ -207,7 +207,7 @@ func Add(attr AttrName, flags int) (Attr, error) {
 	if fd < 0 {
 		return Attr{}, toError(fd)
 	}
-	return Attr{attr, fd}, nil
+	return Attr{attr, int(fd)}, nil
 }
 
 func Drop(attr Attr) error {
@@ -375,7 +375,7 @@ func ModifyFileACLs(file string, add, remove *FileACLs) error {
 
 func lookupAttrName(fd int) (AttrName, error) {
 	var buff [256]C.char
-	err := toError(C.dcac_get_attr_name(C.int(fd), &buff[0], C.int(256)))
+	err := toError(C.dcac_get_attr_name(C.int(fd), &buff[0], 256))
 	if err == nil {
 		return NewAttrName(C.GoString(&buff[0])), nil
 	}
@@ -384,7 +384,7 @@ func lookupAttrName(fd int) (AttrName, error) {
 
 func GetAttrList() ([]Attr, error) {
 	var fd_buffer [256]C.int
-	size := int(C.dcac_get_attr_fd_list(&fd_buffer[0], C.int(256)))
+	size := int(C.dcac_get_attr_fd_list(&fd_buffer[0], 256))
 	if size < 0 {
 		log.Panic("too many attributes added")
 	}
