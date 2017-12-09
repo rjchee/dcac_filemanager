@@ -253,7 +253,7 @@ func GetFileACLs(file string) (*FileACLs, error) {
 			return nil, errors.New("no DCAC ACL found for file " + file)
 		}
 		isGateway = true
-		dest = dest[2+remaining:]
+		dest = dest[int(dest[0])+2:]
 	}
 	dest = dest[:sz]
 	acls := &FileACLs{}
