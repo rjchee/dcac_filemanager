@@ -196,18 +196,28 @@ func (m *FileManager) Setup() error {
 	}
 
 	// initialize dcac state
-	pAttr, dcacErr := dcac.AddUname(dcac.ADDMOD)
-	if dcacErr != nil {
-		return dcacErr
+	var pAttr, fmAttr, gatekeeperAttr, adminAttr dcac.Attr
+	pAttr, err = dcac.AddUname(dcac.ADDMOD)
+	if err != nil {
+		return err
 	}
-	fmAttr := pAttr.AddSub("fm", dcac.ADDMOD)
+	fmAttr, err = pAttr.AddSub("fm", dcac.ADDMOD)
+	if err != nil {
+		return err
+	}
 	// application should not hold onto parent attribute
 	defer fmAttr.Drop()
 	pAttr.Drop()
 	// process holds on to gatekeeper attribute indefinitely
-	gatekeeperAttr := fmAttr.AddSub("gatekeeper", dcac.ADDMOD)
+	gatekeeperAttr, err = fmAttr.AddSub("gatekeeper", dcac.ADDMOD)
+	if err != nil {
+		return err
+	}
 	// admin rights allow users to modify any file's ACL
-	adminAttr := fmAttr.AddSub("admin", dcac.ADDMOD)
+	adminAttr, err = fmAttr.AddSub("admin", dcac.ADDMOD)
+	if err != nil {
+		return err
+	}
 	defer adminAttr.Drop()
 	if _, err := os.Stat(m.DCACDir); os.IsNotExist(err) {
 		// initialize the ACL for everything
@@ -229,10 +239,14 @@ func (m *FileManager) Setup() error {
 			}
 			return nil
 		})
-		// create a gateway attribute for gatekeeper
-		usersAttr := fmAttr.AddSub("users", dcac.ADDMOD)
 		if err := os.Mkdir(m.DCACDir, 0700); err != nil {
 			log.Fatal(err)
+		}
+		// create a gateway attribute for gatekeeper
+		var usersAttr dcac.Attr
+		usersAttr, err = fmAttr.AddSub("users", dcac.ADDMOD)
+		if err != nil {
+			return err
 		}
 		gatekeeperACL := gatekeeperAttr.ACL()
 		usersACL := usersAttr.ACL().OrWith(gatekeeperACL)
@@ -372,9 +386,12 @@ func (m FileManager) getUserAttr(u *User) (dcac.Attr, error) {
 	if err != nil {
 		return dcac.Attr{}, err
 	}
-	userAttr := usersAttr.AddSub(u.Username, dcac.ADDMOD)
-	usersAttr.Drop()
-	return userAttr, nil
+	defer usersAttr.Drop()
+	if userAttr, err := usersAttr.AddSub(u.Username, dcac.ADDMOD); err != nil {
+		return dcac.Attr{}, err
+	} else {
+		return userAttr, nil
+	}
 }
 
 func (m *FileManager) setAdminDCAC(userAttr dcac.Attr, isAdmin bool) error {

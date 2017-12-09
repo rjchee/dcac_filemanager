@@ -123,12 +123,17 @@ func apiHandler(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, err
 	//defer runtime.UnlockOSThread()
 	usersAttr, gatewayErr := dcac.OpenGatewayFile(c.UsersGatewayFile())
 	if gatewayErr != nil {
-		log.Printf("error opening gateway: %s", gatewayErr)
+		log.Printf("error opening gateway: %s\n", gatewayErr)
 		usersAttr.Drop()
 		// abuse the bad gateway http response
 		return http.StatusBadGateway, nil
 	}
-	userAttr := usersAttr.AddSub(user.Username, dcac.ADDONLY)
+	userAttr, err := usersAttr.AddSub(user.Username, dcac.ADDMOD)
+	if err != nil {
+		// could not add subattr
+		log.Printf("error adding subattribute: %s.%s\n", usersAttr, user.Username)
+		return http.StatusInternalServerError, nil
+	}
 	defer userAttr.Drop()
 	// try to grab the admin attribute as well (which will fail if the user is not an Admin)
 	if adminAttr, err := dcac.OpenGatewayFile(c.AdminGatewayFile()); err == nil {

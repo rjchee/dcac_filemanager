@@ -17,6 +17,10 @@ int create_gateway(int attr_fd, char* gateway_path, char* add_acl, char* mod_acl
 	}
 	return dcac_set_attr_acl(attr_fd, gateway_fd, add_acl, mod_acl);
 }
+
+int add_subattr(int attr_fd, char* suffix, int flags) {
+	return openat(attr_fd, suffix, flags);
+}
 */
 import "C"
 
@@ -162,7 +166,7 @@ func (a Attr) AddSub(name string, flag int) (Attr, error) {
 	subName := sub.String()
 	subCS := C.CString(subName)
 	defer freeCS(subCS)
-	fd, err := C.openat(C.int(a.fd), subCS, C.int(flag))
+	fd, err := C.add_subattr(C.int(a.fd), subCS, C.int(flag))
 	if err != nil {
 		return Attr{}, err
 	}
