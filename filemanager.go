@@ -448,7 +448,7 @@ func (m *FileManager) setupUserDCAC(u *User) error {
 		}
 		err = dcac.ModifyFileACLs(path, add, remove)
 		if err != nil {
-			log.Printf("error modifying file %s's ACL: %s\n", patherr)
+			log.Printf("error modifying file %s's ACL: %s\n", path, err)
 		}
 		return nil
 	})
