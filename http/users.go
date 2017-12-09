@@ -374,8 +374,7 @@ func usersPutHandler(c *fm.Context, w http.ResponseWriter, r *http.Request) (int
 
 	// Updates the whole User struct because we always are supposed
 	// to send a new entire object.
-	err = c.UpdateUser(u)
-	if err != nil {
+	if err := c.UpdateUser(suser, u); err != nil {
 		return http.StatusInternalServerError, err
 	}
 

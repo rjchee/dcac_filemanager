@@ -281,23 +281,23 @@ func (m *FileManager) SaveUser(u *User) error {
 	return m.Store.Users.Save(u)
 }
 
-func (m *FileManager) UpdateUser(u *User) error {
-	err := m.updateUserDCAC(u)
+func (m *FileManager) UpdateUser(old, new *User) error {
+	err := m.updateUserDCAC(old, new)
 	if err != nil {
 		return err
 	}
-	return m.Store.Users.Save(u)
+	return m.Store.Users.Save(new)
 }
 
 func (m *FileManager) updateUserDCAC(old, new *User) error {
 	adminChanged := old.Admin != new.Admin
 	scopeChanged := old.Scope != new.Scope
 	permsChanged := old.AllowNew != new.AllowNew || old.AllowEdit != new.AllowEdit || len(old.Rules) != len(new.Rules)
-	for i := 0; !rulesChanged && i < len(old.Rules); i++ {
+	for i := 0; !permsChanged && i < len(old.Rules); i++ {
 		o, n := old.Rules[i], new.Rules[i]
-		rulesChanged = o.Regex != n.Regex || o.Allow != n.Allow || o.Path != n.Path || o.Regex && o.Regexp.Raw != n.Regexp.Raw
+		permsChanged = o.Regex != n.Regex || o.Allow != n.Allow || o.Path != n.Path || o.Regex && o.Regexp.Raw != n.Regexp.Raw
 	}
-	if adminChanged || scopeChanged || rulesChanged || permsChanged {
+	if adminChanged || scopeChanged || permsChanged {
 		userAttr, err := m.getUserAttr(old)
 		if err != nil {
 			return err
