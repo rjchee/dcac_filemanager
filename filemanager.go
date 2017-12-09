@@ -96,6 +96,9 @@ type FileManager struct {
 
 	// name of the directory to hold DCAC state
 	DCACDir string
+
+	// name of database file so DCAC operations don't touch it
+	DatabaseFile string
 }
 
 var commandEvents = []string{
@@ -327,6 +330,7 @@ func (m *FileManager) updateUserDCAC(old, new *User) error {
 			if err != nil {
 				return err
 			}
+			databaseFileInfo, _ := os.Stat(m.DatabaseFile)
 			// remove rights from old scope
 			if err := filepath.Walk(old.Scope, func (path string, info os.FileInfo, err error) error {
 				isDir := info.IsDir()
@@ -338,7 +342,7 @@ func (m *FileManager) updateUserDCAC(old, new *User) error {
 					log.Printf("Could not open file %s\n", path)
 					return nil
 				}
-				if os.SameFile(dcacFileInfo, info) {
+				if os.SameFile(dcacFileInfo, info) || os.SameFile(databaseFileInfo, info) {
 					return filepath.SkipDir
 				}
 				userACL := userAttr.ACL()
@@ -393,6 +397,7 @@ func (m *FileManager) setupUserDCAC(u *User) error {
 	if err != nil {
 		return err
 	}
+	databaseFileInfo, _ := os.Stat(m.DatabaseFile)
 	return filepath.Walk(u.Scope, func (path string, info os.FileInfo, err error) error {
 		isDir := info.IsDir()
 		if isDir && err != nil {
@@ -403,7 +408,7 @@ func (m *FileManager) setupUserDCAC(u *User) error {
 			log.Printf("Could not open file %s\n", path)
 			return nil
 		}
-		if os.SameFile(dcacFileInfo, info) {
+		if os.SameFile(dcacFileInfo, info) || os.SameFile(databaseFileInfo, info) {
 			return filepath.SkipDir
 		}
 		allow := m.rulesAllow(u.Rules, path)

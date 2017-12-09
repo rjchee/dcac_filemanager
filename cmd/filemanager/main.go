@@ -215,6 +215,7 @@ func handler() http.Handler {
 			return fileutils.Dir(scope)
 		},
 		DCACDir: viper.GetString("DCACDir"),
+		DatabaseFile: viper.GetString("Database"),
 	}
 
 	err = fm.Setup()
