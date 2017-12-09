@@ -211,12 +211,16 @@ func (m *FileManager) Setup() error {
 	defer adminAttr.Drop()
 	if _, err := os.Stat(m.DCACDir); os.IsNotExist(err) {
 		// initialize the ACL for everything
+		databaseFileInfo, _ := os.Stat(m.DatabaseFile)
 		filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				log.Printf("Could not open %s\n", path)
 				if info.IsDir() {
 					return filepath.SkipDir
 				}
+				return nil
+			}
+			if os.SameFile(databaseFileInfo, info) {
 				return nil
 			}
 			err = dcac.SetFileMdACL(path, adminAttr.ACL())
@@ -337,13 +341,13 @@ func (m *FileManager) updateUserDCAC(old, new *User) error {
 				if isDir && err != nil {
 					log.Printf("Could not open directory %s\n", path)
 					return filepath.SkipDir
-				}
-				if err != nil {
+				} else if err != nil {
 					log.Printf("Could not open file %s\n", path)
 					return nil
-				}
-				if os.SameFile(dcacFileInfo, info) || os.SameFile(databaseFileInfo, info) {
+				} else if os.SameFile(dcacFileInfo, info) {
 					return filepath.SkipDir
+				} else if os.SameFile(databaseFileInfo, info) {
+					return nil
 				}
 				userACL := userAttr.ACL()
 				err = dcac.ModifyFileACLs(path, nil, &dcac.FileACLs{Read: userACL, Write: userACL})
@@ -403,13 +407,13 @@ func (m *FileManager) setupUserDCAC(u *User) error {
 		if isDir && err != nil {
 			log.Printf("Could not open directory %s\n", path)
 			return filepath.SkipDir
-		}
-		if err != nil {
+		} else if err != nil {
 			log.Printf("Could not open file %s\n", path)
 			return nil
-		}
-		if os.SameFile(dcacFileInfo, info) || os.SameFile(databaseFileInfo, info) {
+		} else if os.SameFile(dcacFileInfo, info) {
 			return filepath.SkipDir
+		} else if os.SameFile(databaseFileInfo, info) {
+			return nil
 		}
 		allow := m.rulesAllow(u.Rules, path)
 		rd, wr := allow, allow && (isDir && u.AllowNew || !isDir && u.AllowEdit)
