@@ -215,7 +215,7 @@ func (m *FileManager) Setup() error {
 		dcac.CreateGatewayFile(usersAttr, m.UsersGatewayFile(), gatekeeperAttr.ACL(), gatekeeperAttr.ACL())
 		dcac.CreateGatewayFile(adminAttr, m.AdminGatewayFile(), nil, nil)
 		usersAttr.Drop()
-	} else if os.isPermission(err) {
+	} else if os.IsPermission(err) {
 		return err
 	}
 	if err := dcac.SetDefMdACL(adminAttr.ACL()); err != nil {
@@ -289,7 +289,7 @@ func (m *FileManager) UpdateUser(u *User) error {
 	return m.Store.Users.Save(u)
 }
 
-func (m *FileManager) updateUserDCAC(old, new *.User) error {
+func (m *FileManager) updateUserDCAC(old, new *User) error {
 	adminChanged := old.Admin != new.Admin
 	scopeChanged := old.Scope != new.Scope
 	permsChanged := old.AllowNew != new.AllowNew || old.AllowEdit != new.AllowEdit || len(old.Rules) != len(new.Rules)
