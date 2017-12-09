@@ -2,8 +2,13 @@ package dcac
 
 /*
 #include "/home/raymond/dcac/user/include/dcac.h"
+#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+int open_gateway(char* f) {
+	return open(f, DCAC_ADDMOD);
+}
 */
 import "C"
 
@@ -27,6 +32,10 @@ func toError(errno C.int) error {
 		return nil
 	}
 	return syscall.Errno(int(errno))
+}
+
+func freeCS(cs *C.char) {
+	C.free(unsafe.Pointer(cs))
 }
 
 type ACL []string
@@ -171,7 +180,7 @@ func AddGname(flags int) (Attr, error) {
 
 func Add(attr AttrName, flags int) Attr {
 	cs := C.CString(attr.String())
-	defer C.free(unsafe.Pointer(cs))
+	defer freeCS(cs)
 	fd := int(C.dcac_add_any_attr(cs, C.int(flags)))
 	return Attr{attr, fd}
 }
@@ -182,57 +191,57 @@ func Drop(attr Attr) error {
 
 func SetDefRdACL(acl ACL) error {
 	cs := acl.toC()
-	defer C.free(unsafe.Pointer(cs))
+	defer freeCS(cs)
 	return toError(C.dcac_set_def_rdacl(cs))
 }
 
 func SetDefWrACL(acl ACL) error {
 	cs := acl.toC()
-	defer C.free(unsafe.Pointer(cs))
+	defer freeCS(cs)
 	return toError(C.dcac_set_def_wracl(cs))
 }
 
 func SetDefExACL(acl ACL) error {
 	cs := acl.toC()
-	defer C.free(unsafe.Pointer(cs))
+	defer freeCS(cs)
 	return toError(C.dcac_set_def_exacl(cs))
 }
 
 func SetDefMdACL(acl ACL) error {
 	cs := acl.toC()
-	defer C.free(unsafe.Pointer(cs))
+	defer freeCS(cs)
 	return toError(C.dcac_set_def_mdacl(cs))
 }
 
 func SetFileRdACL(file string, acl ACL) error {
 	fileCS := C.CString(file)
-	defer C.free(unsafe.Pointer(fileCS))
+	defer freeCS(fileCS)
 	aclCS := acl.toC()
-	defer C.free(unsafe.Pointer(aclCS))
+	defer freeCS(aclCS)
 	return toError(C.dcac_set_file_rdacl(fileCS, aclCS))
 }
 
 func SetFileWrACL(file string, acl ACL) error {
 	fileCS := C.CString(file)
-	defer C.free(unsafe.Pointer(fileCS))
+	defer freeCS(fileCS)
 	aclCS := acl.toC()
-	defer C.free(unsafe.Pointer(aclCS))
+	defer freeCS(aclCS)
 	return toError(C.dcac_set_file_wracl(fileCS, aclCS))
 }
 
 func SetFileExACL(file string, acl ACL) error {
 	fileCS := C.CString(file)
-	defer C.free(unsafe.Pointer(fileCS))
+	defer freeCS(fileCS)
 	aclCS := acl.toC()
-	defer C.free(unsafe.Pointer(aclCS))
+	defer freeCS(aclCS)
 	return toError(C.dcac_set_file_exacl(fileCS, aclCS))
 }
 
 func SetFileMdACL(file string, acl ACL) error {
 	fileCS := C.CString(file)
-	defer C.free(unsafe.Pointer(fileCS))
+	defer freeCS(fileCS)
 	aclCS := acl.toC()
-	defer C.free(unsafe.Pointer(aclCS))
+	defer freeCS(aclCS)
 	return toError(C.dcac_set_file_mdacl(fileCS, aclCS))
 }
 
@@ -339,8 +348,8 @@ func ModifyFileACLs(file string, add, remove *FileACLs) error {
 func SetAttrACL(attr Attr, gateway *os.File, add, mod ACL) error {
 	addCS := add.toC()
 	modCS := mod.toC()
-	defer C.free(unsafe.Pointer(addCS))
-	defer C.free(unsafe.Pointer(modCS))
+	defer freeCS(addCS)
+	defer freeCS(modCS)
 	return toError(C.dcac_set_attr_acl(C.int(attr.fd), C.int(gateway.Fd()), addCS, modCS))
 }
 
@@ -410,11 +419,13 @@ func CreateGatewayFile(attr Attr, filename string, add, mod ACL) error {
 }
 
 func OpenGatewayFile(filename string) (Attr, error) {
-	file, err := os.OpenFile(filename, os.O_RDONLY | ADDMOD, 0644)
+	fCS := C.CString(filename)
+	defer freeCS(fCS)
+	cfd, err := C.open_gateway(fCS)
 	if err != nil {
 		return Attr{}, err
 	}
-	fd := int(file.Fd())
+	fd := int(cfd)
 	if name, err := lookupAttrName(fd); err != nil {
 		return Attr{}, err
 	} else {
