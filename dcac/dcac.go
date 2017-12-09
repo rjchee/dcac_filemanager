@@ -170,7 +170,7 @@ func (a Attr) AddSub(name string, flag int) (Attr, error) {
 	if err != nil {
 		return Attr{}, err
 	}
-	return Attr{subName, int(fd)}, nil
+	return Attr{sub, int(fd)}, nil
 }
 
 func (a Attr) Drop() error {
@@ -203,11 +203,11 @@ func AddGname(flags int) (Attr, error) {
 func Add(attr AttrName, flags int) (Attr, error) {
 	cs := C.CString(attr.String())
 	defer freeCS(cs)
-	fd := int(C.dcac_add_any_attr(cs, C.int(flags)))
+	fd := C.dcac_add_any_attr(cs, C.int(flags))
 	if fd < 0 {
 		return Attr{}, toError(fd)
 	}
-	return Attr{attr, fd}
+	return Attr{attr, fd}, nil
 }
 
 func Drop(attr Attr) error {
