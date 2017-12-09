@@ -246,8 +246,13 @@ type FileACLs struct {
 func GetFileACLs(file string) (*FileACLs, error) {
 	dest := make([]byte, 1000)
 	sz, err := syscall.Getxattr(file, "security.dcac.pm", dest)
+	isGateway := false
 	if err != nil {
-		return nil, err
+		sz, err = syscall.Getxattr(file, "security.dcac.at", dest)
+		if err != nil {
+			return nil, errors.New("no DCAC ACL found for file " + file)
+		}
+		isGateway = true
 	}
 	dest = dest[:sz]
 	acls := &FileACLs{}
@@ -255,13 +260,15 @@ func GetFileACLs(file string) (*FileACLs, error) {
 	if err != nil {
 		return nil, err
 	}
-	dest, acls.Write, err = getFirstACL(dest)
-	if err != nil {
-		return nil, err
-	}
-	dest, acls.Execute, err = getFirstACL(dest)
-	if err != nil {
-		return nil, err
+	if !isGateway {
+		dest, acls.Write, err = getFirstACL(dest)
+		if err != nil {
+			return nil, err
+		}
+		dest, acls.Execute, err = getFirstACL(dest)
+		if err != nil {
+			return nil, err
+		}
 	}
 	dest, acls.Modify, err = getFirstACL(dest)
 	if err != nil {
