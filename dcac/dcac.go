@@ -24,7 +24,6 @@ import (
 	"bytes"
 	"errors"
 	"log"
-	"os"
 	"strings"
 	"syscall"
 	"unsafe"
