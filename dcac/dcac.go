@@ -6,8 +6,8 @@ package dcac
 #include <stdlib.h>
 #include <unistd.h>
 
-int open_gateway(char* f) {
-	return open(f, DCAC_ADDMOD);
+int open_gateway(char* f, int flags) {
+	return open(f, flags);
 }
 
 int create_gateway(int attr_fd, char* gateway_path, char* add_acl, char* mod_acl) {
@@ -442,10 +442,10 @@ func CreateGatewayFile(attr Attr, filename string, add, mod ACL) error {
 	return nil
 }
 
-func OpenGatewayFile(filename string) (Attr, error) {
+func OpenGatewayFile(filename string, flags int) (Attr, error) {
 	fCS := C.CString(filename)
 	defer freeCS(fCS)
-	cfd, err := C.open_gateway(fCS)
+	cfd, err := C.open_gateway(fCS, C.int(flags))
 	if err != nil {
 		return Attr{}, err
 	}

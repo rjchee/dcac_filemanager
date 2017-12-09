@@ -382,7 +382,7 @@ func (m *FileManager) updateUserDCAC(old, new *User) error {
 }
 
 func (m FileManager) getUserAttr(u *User) (dcac.Attr, error) {
-	usersAttr, err := dcac.OpenGatewayFile(m.UsersGatewayFile())
+	usersAttr, err := dcac.OpenGatewayFile(m.UsersGatewayFile(), dcac.ADDMOD)
 	if err != nil {
 		return dcac.Attr{}, err
 	}

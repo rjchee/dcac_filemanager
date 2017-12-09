@@ -121,7 +121,7 @@ func apiHandler(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, err
 	// TODO: check if locking is required
 	//runtime.LockOSThread()
 	//defer runtime.UnlockOSThread()
-	usersAttr, gatewayErr := dcac.OpenGatewayFile(c.UsersGatewayFile())
+	usersAttr, gatewayErr := dcac.OpenGatewayFile(c.UsersGatewayFile(), dcac.ADDMOD)
 	if gatewayErr != nil {
 		log.Printf("error opening gateway: %s\n", gatewayErr)
 		usersAttr.Drop()
@@ -136,7 +136,7 @@ func apiHandler(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, err
 	}
 	defer userAttr.Drop()
 	// try to grab the admin attribute as well (which will fail if the user is not an Admin)
-	if adminAttr, err := dcac.OpenGatewayFile(c.AdminGatewayFile()); err == nil {
+	if adminAttr, err := dcac.OpenGatewayFile(c.AdminGatewayFile(), dcac.ADDMOD); err == nil {
 		defer adminAttr.Drop()
 	}
 	usersAttr.Drop()
