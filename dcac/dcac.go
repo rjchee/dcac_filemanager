@@ -11,7 +11,7 @@ int open_gateway(char* f) {
 }
 
 int create_gateway(int attr_fd, char* gateway_path, char* add_acl, char* mod_acl) {
-	int gateway_fd = open(gateway_path, O_CREAT, 0); //S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	int gateway_fd = open(gateway_path, O_CREAT, S_IRUSR | S_IWUSR);
 	if (gateway_fd < 0) {
 		return gateway_fd;
 	}
@@ -308,14 +308,16 @@ func getFirstACL(xattr []byte) ([]byte, ACL, error) {
 
 	xattrBuff := bytes.NewBuffer(xattr)
 	var acl ACL
-	for attr, err := xattrBuff.ReadString(byte(0)); err != nil || len(attr) <= 1; {
+	for {
+		attr, err := xattrBuff.ReadString(0)
 		if err != nil {
 			return nil, ACL{}, err
 		}
+		if len(attr) == 1 {
+			return remainingBytes, acl, nil
+		}
 		acl = append(acl, attr[:len(attr)-1])
 	}
-
-	return remainingBytes, acl, nil
 }
 
 func ModifyFileACLs(file string, add, remove *FileACLs) error {
