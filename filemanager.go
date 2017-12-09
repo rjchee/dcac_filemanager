@@ -638,7 +638,7 @@ type User struct {
 func (u User) Allowed(url string) bool {
 	println(url)
 	dcac.PrintAttrs()
-	_, err := ioutil.ReadFile("." + url)
+	_, err := ioutil.ReadFile(filepath.Join(u.Scope, url))
 	return err != nil || url[len(url) - 1:] != "/"
 }
 

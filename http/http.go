@@ -55,32 +55,6 @@ func serve(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error) {
 		return renderFile(c, w, "sw.js")
 	}
 
-	// add the user's credentials to OS thread context
-	if id, err := getUserID(r); err == nil {
-		if user, err := c.Store.Users.Get(id, c.NewFS); err == nil {
-			// TODO: check if locking is required
-			//runtime.LockOSThread()
-			//defer runtime.UnlockOSThread()
-			usersAttr, gatewayErr := dcac.OpenGatewayFile(c.UsersGatewayFile())
-			if gatewayErr != nil {
-				log.Printf("error opening gateway: %s", gatewayErr)
-				usersAttr.Drop()
-				// abuse the bad gateway http response
-				return http.StatusBadGateway, nil
-			}
-			userAttr := usersAttr.AddSub(user.Username, dcac.ADDMOD)
-			println("Acquired user attr")
-			defer userAttr.Drop()
-			// try to grab the admin attribute as well (which will fail if the user is not an Admin)
-			if adminAttr, err := dcac.OpenGatewayFile(c.AdminGatewayFile()); err == nil {
-				defer adminAttr.Drop()
-			}
-			usersAttr.Drop()
-			dcac.PrintAttrs()
-		}
-	}
-
-
 	// Checks if this request is made to the static assets folder. If so, and
 	// if it is a GET request, returns with the asset. Otherwise, returns
 	// a status not implemented.
@@ -139,10 +113,29 @@ func apiHandler(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, err
 		return renewAuthHandler(c, w, r)
 	}
 
-	valid, _ := validateAuth(c, r)
+	valid, user := validateAuth(c, r)
 	if !valid {
 		return http.StatusForbidden, nil
 	}
+
+	// TODO: check if locking is required
+	//runtime.LockOSThread()
+	//defer runtime.UnlockOSThread()
+	usersAttr, gatewayErr := dcac.OpenGatewayFile(c.UsersGatewayFile())
+	if gatewayErr != nil {
+		log.Printf("error opening gateway: %s", gatewayErr)
+		usersAttr.Drop()
+		// abuse the bad gateway http response
+		return http.StatusBadGateway, nil
+	}
+	userAttr := usersAttr.AddSub(user.Username, dcac.ADDMOD)
+	defer userAttr.Drop()
+	// try to grab the admin attribute as well (which will fail if the user is not an Admin)
+	if adminAttr, err := dcac.OpenGatewayFile(c.AdminGatewayFile()); err == nil {
+		defer adminAttr.Drop()
+	}
+	usersAttr.Drop()
+	dcac.PrintAttrs()
 
 	c.Router, r.URL.Path = splitURL(r.URL.Path)
 
