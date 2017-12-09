@@ -416,7 +416,7 @@ func OpenGatewayFile(filename string) (Attr, error) {
 	}
 	fd := int(file.Fd())
 	if name, err := lookupAttrName(fd); err != nil {
-		return Attr{}, nil
+		return Attr{}, err
 	} else {
 		return Attr{name, fd}, nil
 	}
