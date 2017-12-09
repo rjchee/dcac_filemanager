@@ -38,7 +38,9 @@ func (a ACL) Add(name AttrName) ACL {
 			return a
 		}
 	}
-	return append(a, addAttr)
+	newACL := make([]string, len(a))
+	copy(newACL, a)
+	return append(newACL, addAttr)
 }
 
 func (a ACL) OrWith(o ACL) ACL {
@@ -46,22 +48,24 @@ func (a ACL) OrWith(o ACL) ACL {
 	for _, attr := range a {
 		set[attr] = struct{}{}
 	}
+	var newACL ACL
 	for _, attr := range o {
 		if _, ok := set[attr]; !ok {
-			a = append(a, attr)
+			newACL = append(newACL, attr)
 		}
 	}
-	return a
+	return newACL
 }
 
 func (a ACL) Remove(name AttrName) ACL {
 	removeAttr := name.String()
-	for i, attr := range a {
-		if attr == removeAttr {
-			return append(a[:i], a[i+1:]...)
+	var newACL ACL
+	for _, attr := range a {
+		if attr != removeAttr {
+			newACL = append(newACL, attr)
 		}
 	}
-	return a
+	return newACL
 }
 
 func (a ACL) RemoveAll(o ACL) ACL {
@@ -105,7 +109,9 @@ func (a AttrName) String() string {
 }
 
 func (a AttrName) SubAttr(name string) AttrName {
-	return append(a, name)
+	newAttrName := make([]string, len(a))
+	copy(a, newAttrName)
+	return append(newAttrName, name)
 }
 
 func (a AttrName) Parent() AttrName {
