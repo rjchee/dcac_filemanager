@@ -200,7 +200,7 @@ func SetFileRdACL(file string, acl ACL) error {
 }
 
 func SetFileWrACL(file string, acl ACL) error {
-	fileCS := C.Cstring(file)
+	fileCS := C.CString(file)
 	defer C.free(unsafe.Pointer(fileCS))
 	aclCS := acl.toC()
 	defer C.free(unsafe.Pointer(aclCS))
@@ -208,7 +208,7 @@ func SetFileWrACL(file string, acl ACL) error {
 }
 
 func SetFileExACL(file string, acl ACL) error {
-	fileCS := C.Cstring(file)
+	fileCS := C.CString(file)
 	defer C.free(unsafe.Pointer(fileCS))
 	aclCS := acl.toC()
 	defer C.free(unsafe.Pointer(aclCS))
@@ -216,7 +216,7 @@ func SetFileExACL(file string, acl ACL) error {
 }
 
 func SetFileMdACL(file string, acl ACL) error {
-	fileCS := C.Cstring(file)
+	fileCS := C.CString(file)
 	defer C.free(unsafe.Pointer(fileCS))
 	aclCS := acl.toC()
 	defer C.free(unsafe.Pointer(aclCS))
