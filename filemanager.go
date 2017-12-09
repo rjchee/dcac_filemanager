@@ -193,11 +193,11 @@ func (m *FileManager) Setup() error {
 	}
 
 	// initialize dcac state
-	pAttr := dcac.AddUnameAttr(dcac.ADDMOD)
+	pAttr := dcac.AddUname(dcac.ADDMOD)
 	fmAttr := pAttr.AddSub("fm", dcac.ADDMOD)
 	// application should not hold onto parent attribute
-	defer dcac.DropAttr(fmAttr)
-	dcac.DropAttr(pAttr)
+	defer fmAttr.Drop()
+	pAttr.Drop()
 	// process holds on to gatekeeper attribute indefinitely
 	gatekeeperAttr := fmAttr.AddSub("gatekeeper", dcac.ADDMOD)
 	// admin rights allow users to modify any file's ACL

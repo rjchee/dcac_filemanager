@@ -129,7 +129,7 @@ func (a Attr) ACL() ACL {
 }
 
 func (a Attr) AddSub(name string, flag int) Attr {
-	return Add(a.Name.SubAttr(name).String(), flag)
+	return Add(a.Name.SubAttr(name), flag)
 }
 
 func (a Attr) Drop() error {
@@ -137,7 +137,7 @@ func (a Attr) Drop() error {
 }
 
 func AddUname(flags int) Attr {
-	fd := int(C.dcac_add_uname_attr(flags))
+	fd := int(C.dcac_add_uname_attr(C.int(flags)))
 	for _, attr := range GetAttrList() {
 		if attr.fd == fd {
 			return attr
@@ -147,7 +147,7 @@ func AddUname(flags int) Attr {
 }
 
 func AddGname(flags int) Attr {
-	fd := int(C.dcac_add_gname_attr(flags))
+	fd := int(C.dcac_add_gname_attr(C.int(flags)))
 	for _, attr := range GetAttrList() {
 		if attr.fd == fd {
 			return attr
@@ -156,15 +156,15 @@ func AddGname(flags int) Attr {
 	return Attr{}
 }
 
-func Add(attr string, flags int) Attr {
+func Add(attr AttrName, flags int) Attr {
 	cs := C.CString(attr)
 	defer C.free(unsafe.Pointer(cs))
 	fd := int(C.dcac_add_any_attr(cs, C.int(flags)))
-	return Attr{attr, fd}
+	return Attr{NewAttrName(attr), fd}
 }
 
 func Drop(attr Attr) error {
-	return toError(C.close(attr.fd))
+	return toError(C.close(C.int(attr.fd)))
 }
 
 func SetDefRdACL(acl ACL) error {
@@ -234,7 +234,7 @@ func GetFileACLs(file string) (*FileACLs, error) {
 	dest := make([]byte, 1000)
 	sz, err := syscall.Getxattr(file, "security.dcac.pm", dest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	dest = dest[:sz]
 	acls := &FileACLs{}
@@ -261,18 +261,18 @@ func getFirstACL(xattr []byte) ([]byte, ACL, error) {
 	remaining := int(xattr[0])
 	remainingBytes := xattr[remaining:]
 	xattr = xattr[2:remaining]
-	beforeOps := int(xAttr[0])
+	beforeOps := int(xattr[0])
 	xattr = xattr[:beforeOps]
 	metadataSz := int(xattr[2])
 	xattr = xattr[metadataSz:]
 
 	xattrBuff := bytes.NewBuffer(xattr)
 	var acl ACL
-	for attr, err := xattrBuff.ReadString(byte(0)); err != nil && len(attr) > 0; {
+	for attr, err := xattrBuff.ReadString(byte(0)); err != nil || len(attr) > 0; {
+		if err != nil {
+			return nil, ACL{}, err
+		}
 		acl = append(acl, attr)
-	}
-	if err != nil {
-		return nil, ACL{}, err
 	}
 
 	return remainingBytes, acl, nil
@@ -306,7 +306,7 @@ func ModifyFileACLs(file string, add, remove *FileACLs) error {
 	return nil
 }
 
-func SetAttrACL(attr Attr, gateway *File, add, mod ACL) error {
+func SetAttrACL(attr Attr, gateway *os.File, add, mod ACL) error {
 	addCS := add.toC()
 	modCS := mod.toC()
 	defer C.free(unsafe.Pointer(addCS))
@@ -316,7 +316,7 @@ func SetAttrACL(attr Attr, gateway *File, add, mod ACL) error {
 
 func lookupAttrName(fd int) (string, error) {
 	var buff [256]C.char
-	err := toError(C.dcac_get_attr_name(fd, &buff[0], 256))
+	err := toError(C.dcac_get_attr_name(C.int(fd), &buff[0], C.int(256)))
 	if err == nil {
 		return C.GoString(&buff[0]), nil
 	}
@@ -325,7 +325,7 @@ func lookupAttrName(fd int) (string, error) {
 
 func GetAttrList() []Attr {
 	var fd_buffer [256]C.int
-	size := int(C.dcac_get_attr_fd_list(&fd_buffer[0], 256))
+	size := int(C.dcac_get_attr_fd_list(&fd_buffer[0], C.int(256)))
 	if size < 0 {
 		log.Panic("too many attributes added")
 	}
