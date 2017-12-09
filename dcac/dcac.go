@@ -282,18 +282,18 @@ func getFirstACL(xattr []byte) ([]byte, ACL, error) {
 	remaining := int(xattr[0])+2
 	remainingBytes := xattr[remaining:]
 	xattr = xattr[2:remaining]
-	beforeOps := int(xattr[0])+2
+	beforeOps := int(xattr[0])+1
 	xattr = xattr[:beforeOps]
 	metadataSz := int(xattr[2])
 	xattr = xattr[metadataSz:]
 
 	xattrBuff := bytes.NewBuffer(xattr)
 	var acl ACL
-	for attr, err := xattrBuff.ReadString(byte(0)); err != nil || len(attr) > 0; {
+	for attr, err := xattrBuff.ReadString(byte(0)); err != nil || len(attr) <= 1; {
 		if err != nil {
 			return nil, ACL{}, err
 		}
-		acl = append(acl, attr)
+		acl = append(acl, attr[:len(attr)-1])
 	}
 
 	return remainingBytes, acl, nil
