@@ -171,7 +171,6 @@ func apiHandler(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, err
 	}
 
 	var code int
-	var err error
 
 	switch c.Router {
 	case "download":
