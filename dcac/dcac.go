@@ -157,10 +157,10 @@ func AddGname(flags int) Attr {
 }
 
 func Add(attr AttrName, flags int) Attr {
-	cs := C.CString(attr)
+	cs := C.CString(attr.String())
 	defer C.free(unsafe.Pointer(cs))
 	fd := int(C.dcac_add_any_attr(cs, C.int(flags)))
-	return Attr{NewAttrName(attr), fd}
+	return Attr{attr, fd}
 }
 
 func Drop(attr Attr) error {
@@ -323,7 +323,7 @@ func lookupAttrName(fd int) (string, error) {
 	return "", err
 }
 
-func GetAttrList() []Attr {
+func GetAttrList() ([]Attr, error) {
 	var fd_buffer [256]C.int
 	size := int(C.dcac_get_attr_fd_list(&fd_buffer[0], C.int(256)))
 	if size < 0 {
@@ -333,16 +333,24 @@ func GetAttrList() []Attr {
 	var attrs []Attr
 	for i := 0; i < size; i++ {
 		fd := int(fd_buffer[i])
-		attrName := lookupAttrName(fd)
+		attrName, err := lookupAttrName(fd)
+		if err != nil {
+			return err
+		}
 		attrs = append(attrs, Attr{attrName, fd})
 	}
 
-	return attrs
+	return attrs, nil
 }
 
 func PrintAttrs() {
+	attrs, err := GetAttrList()
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	for attr := range GetAttrList() {
-		println(attr.String())
+		log.Println(attr.String())
 	}
 }
 
@@ -372,11 +380,14 @@ func CreateGatewayFile(attr Attr, filename string, add, mod ACL) error {
 }
 
 func OpenGatewayFile(filename string) (Attr, error) {
-	file, err := os.Openfile(filename, os.O_RDONLY | ADDMOD, 0644)
+	file, err := os.OpenFile(filename, os.O_RDONLY | ADDMOD, 0644)
 	if err != nil {
 		return Attr{}, err
 	}
 	fd := int(file.Fd())
-	name := lookupAttrName(fd)
-	return Attr{name, fd}, nil
+	if name, err := lookupAttrName(fd); err != nil {
+		return Attr{}, nil
+	} else {
+		return Attr{name, fd}, nil
+	}
 }
