@@ -281,6 +281,9 @@ func GetFileACLs(file string) (*FileACLs, error) {
 func getFirstACL(xattr []byte) ([]byte, ACL, error) {
 	remaining := int(xattr[0])+2
 	remainingBytes := xattr[remaining:]
+	if remaining == 2 {
+		return remainingBytes, nil, nil
+	}
 	xattr = xattr[2:remaining]
 	beforeOps := int(xattr[0])+1
 	xattr = xattr[:beforeOps]
