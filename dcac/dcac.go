@@ -35,8 +35,11 @@ const (
 )
 
 func toError(errno C.int) error {
-	if errno == C.int(0) {
+	e := int(errno)
+	if e == 0 {
 		return nil
+	} else if e < 0 {
+		e = -e
 	}
 	return syscall.Errno(int(errno))
 }
@@ -154,8 +157,16 @@ func (a Attr) ACL() ACL {
 	return NewACL(a.String())
 }
 
-func (a Attr) AddSub(name string, flag int) Attr {
-	return Add(a.Name.SubAttr(name), flag)
+func (a Attr) AddSub(name string, flag int) (Attr, error) {
+	sub := a.Name.SubAttr(name)
+	subName := sub.String()
+	subCS := C.CString(subName)
+	defer freeCS(subCS)
+	fd, err := C.openat(C.int(a.fd), subCS, C.int(flag))
+	if err != nil {
+		return Attr{}, err
+	}
+	return Attr{subName, int(fd)}, nil
 }
 
 func (a Attr) Drop() error {
@@ -185,15 +196,19 @@ func AddGname(flags int) (Attr, error) {
 	return findAddedAttr(fd)
 }
 
-func Add(attr AttrName, flags int) Attr {
+func Add(attr AttrName, flags int) (Attr, error) {
 	cs := C.CString(attr.String())
 	defer freeCS(cs)
 	fd := int(C.dcac_add_any_attr(cs, C.int(flags)))
+	if fd < 0 {
+		return Attr{}, toError(fd)
+	}
 	return Attr{attr, fd}
 }
 
 func Drop(attr Attr) error {
-	return toError(C.close(C.int(attr.fd)))
+	_, err := C.close(C.int(attr.fd))
+	return err
 }
 
 func SetDefRdACL(acl ACL) error {
