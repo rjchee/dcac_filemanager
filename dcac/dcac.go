@@ -9,6 +9,14 @@ package dcac
 int open_gateway(char* f) {
 	return open(f, DCAC_ADDMOD);
 }
+
+int create_gateway(int attr_fd, char* gateway_path, char* add_acl, char* mod_acl) {
+	int gateway_fd = open(gateway_path, O_CREAT, 0); //S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (gateway_fd < 0) {
+		return gateway_fd;
+	}
+	return dcac_set_attr_acl(attr_fd, gateway_fd, add_acl, mod_acl);
+}
 */
 import "C"
 
@@ -345,14 +353,6 @@ func ModifyFileACLs(file string, add, remove *FileACLs) error {
 	return nil
 }
 
-func SetAttrACL(attr Attr, gateway *os.File, add, mod ACL) error {
-	addCS := add.toC()
-	modCS := mod.toC()
-	defer freeCS(addCS)
-	defer freeCS(modCS)
-	return toError(C.dcac_set_attr_acl(C.int(attr.fd), C.int(gateway.Fd()), addCS, modCS))
-}
-
 func lookupAttrName(fd int) (AttrName, error) {
 	var buff [256]C.char
 	err := toError(C.dcac_get_attr_name(C.int(fd), &buff[0], C.int(256)))
@@ -410,12 +410,18 @@ func Unlock() {
 }
 
 func CreateGatewayFile(attr Attr, filename string, add, mod ACL) error {
-	gatewayFile, err := os.Create(filename)
-	if err != nil {
+	fnameCS := C.CString(filename)
+	defer freeCS(fnameCS)
+	addCS := C.CString(add.String())
+	defer freeCS(addCS)
+	modCS := C.CString(mod.String())
+	defer freeCS(modCS)
+	if res, err := C.create_gateway(C.int(attr.fd), fnameCS, addCS, modCS); err != nil {
 		return err
+	} else if res != 0 {
+		return toError(res)
 	}
-	gatewayFile.Chmod(0644)
-	return SetAttrACL(attr, gatewayFile, add, mod)
+	return nil
 }
 
 func OpenGatewayFile(filename string) (Attr, error) {

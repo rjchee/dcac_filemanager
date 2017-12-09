@@ -235,8 +235,6 @@ func (m *FileManager) Setup() error {
 			log.Fatal(err)
 		}
 		gatekeeperACL := gatekeeperAttr.ACL()
-		dcac.SetFileRdACL(m.DCACDir, gatekeeperACL)
-		dcac.SetFileExACL(m.DCACDir, gatekeeperACL)
 		usersACL := usersAttr.ACL().OrWith(gatekeeperACL)
 		dcac.CreateGatewayFile(usersAttr, m.UsersGatewayFile(), usersACL, usersACL)
 		adminGatewayACL := adminAttr.ACL()
