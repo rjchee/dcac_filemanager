@@ -1,7 +1,7 @@
 package dcac
 
 /*
-#include "/home/chris/dcac/user/include/dcac.h"
+#include "/home/raymond/dcac/user/include/dcac.h"
 #include <stdlib.h>
 #include <unistd.h>
 */
@@ -170,29 +170,29 @@ func Drop(attr Attr) error {
 func SetDefRdACL(acl ACL) error {
 	cs := acl.toC()
 	defer C.free(unsafe.Pointer(cs))
-	return toError(C.dcac_set_def_rd(cs))
+	return toError(C.dcac_set_def_rdacl(cs))
 }
 
 func SetDefWrACL(acl ACL) error {
 	cs := acl.toC()
 	defer C.free(unsafe.Pointer(cs))
-	return toError(C.dcac_set_def_wr(cs))
+	return toError(C.dcac_set_def_wracl(cs))
 }
 
 func SetDefExACL(acl ACL) error {
 	cs := acl.toC()
 	defer C.free(unsafe.Pointer(cs))
-	return toError(C.dcac_set_def_ex(cs))
+	return toError(C.dcac_set_def_exacl(cs))
 }
 
 func SetDefMdACL(acl ACL) error {
 	cs := acl.toC()
 	defer C.free(unsafe.Pointer(cs))
-	return toError(C.dcac_set_def_md(cs))
+	return toError(C.dcac_set_def_mdacl(cs))
 }
 
 func SetFileRdACL(file string, acl ACL) error {
-	fileCS := C.Cstring(file)
+	fileCS := C.CString(file)
 	defer C.free(unsafe.Pointer(fileCS))
 	aclCS := acl.toC()
 	defer C.free(unsafe.Pointer(aclCS))
@@ -316,7 +316,7 @@ func SetAttrACL(attr Attr, gateway *File, add, mod ACL) error {
 
 func lookupAttrName(fd int) (string, error) {
 	var buff [256]C.char
-	err := toError(C.dcac_get_attr_name(fd, &C.buff[0], 256))
+	err := toError(C.dcac_get_attr_name(fd, &buff[0], 256))
 	if err == nil {
 		return C.GoString(&buff[0]), nil
 	}
