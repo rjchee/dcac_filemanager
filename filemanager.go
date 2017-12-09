@@ -193,7 +193,10 @@ func (m *FileManager) Setup() error {
 	}
 
 	// initialize dcac state
-	pAttr := dcac.AddUname(dcac.ADDMOD)
+	pAttr, dcacErr := dcac.AddUname(dcac.ADDMOD)
+	if dcacErr != nil {
+		return dcacErr
+	}
 	fmAttr := pAttr.AddSub("fm", dcac.ADDMOD)
 	// application should not hold onto parent attribute
 	defer fmAttr.Drop()

@@ -9,6 +9,7 @@ import "C"
 
 import (
 	"bytes"
+	"errors"
 	"log"
 	"os"
 	"strings"
@@ -136,24 +137,27 @@ func (a Attr) Drop() error {
 	return Drop(a)
 }
 
-func AddUname(flags int) Attr {
-	fd := int(C.dcac_add_uname_attr(C.int(flags)))
-	for _, attr := range GetAttrList() {
+func findAddedAttr(fd int) (Attr, error) {
+	attrs, err := GetAttrList()
+	if err != nil {
+		return Attr{}, err
+	}
+	for _, attr := range attrs {
 		if attr.fd == fd {
-			return attr
+			return attr, nil
 		}
 	}
-	return Attr{}
+	return Attr{}, errors.New("could not find added attribute")
 }
 
-func AddGname(flags int) Attr {
+func AddUname(flags int) (Attr, error) {
+	fd := int(C.dcac_add_uname_attr(C.int(flags)))
+	return findAddedAttr(fd)
+}
+
+func AddGname(flags int) (Attr, error) {
 	fd := int(C.dcac_add_gname_attr(C.int(flags)))
-	for _, attr := range GetAttrList() {
-		if attr.fd == fd {
-			return attr
-		}
-	}
-	return Attr{}
+	return findAddedAttr(fd)
 }
 
 func Add(attr AttrName, flags int) Attr {
