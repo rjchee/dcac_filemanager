@@ -318,11 +318,11 @@ func SetAttrACL(attr Attr, gateway *os.File, add, mod ACL) error {
 	return toError(C.dcac_set_attr_acl(C.int(attr.fd), C.int(gateway.Fd()), addCS, modCS))
 }
 
-func lookupAttrName(fd int) (string, error) {
+func lookupAttrName(fd int) (AttrName, error) {
 	var buff [256]C.char
 	err := toError(C.dcac_get_attr_name(C.int(fd), &buff[0], C.int(256)))
 	if err == nil {
-		return C.GoString(&buff[0]), nil
+		return NewAttrName(C.GoString(&buff[0])), nil
 	}
 	return "", err
 }
@@ -339,7 +339,7 @@ func GetAttrList() ([]Attr, error) {
 		fd := int(fd_buffer[i])
 		attrName, err := lookupAttrName(fd)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		attrs = append(attrs, Attr{attrName, fd})
 	}
@@ -353,7 +353,7 @@ func PrintAttrs() {
 		log.Println(err)
 		return
 	}
-	for attr := range GetAttrList() {
+	for attr := range attrs {
 		log.Println(attr.String())
 	}
 }
