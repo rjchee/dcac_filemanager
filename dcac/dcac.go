@@ -324,7 +324,7 @@ func lookupAttrName(fd int) (AttrName, error) {
 	if err == nil {
 		return NewAttrName(C.GoString(&buff[0])), nil
 	}
-	return "", err
+	return nil, err
 }
 
 func GetAttrList() ([]Attr, error) {
@@ -353,7 +353,7 @@ func PrintAttrs() {
 		log.Println(err)
 		return
 	}
-	for attr := range attrs {
+	for _, attr := range attrs {
 		log.Println(attr.String())
 	}
 }
