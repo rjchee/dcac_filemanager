@@ -253,6 +253,7 @@ func GetFileACLs(file string) (*FileACLs, error) {
 			return nil, errors.New("no DCAC ACL found for file " + file)
 		}
 		isGateway = true
+		dest = dest[2+remaining:]
 	}
 	dest = dest[:sz]
 	acls := &FileACLs{}
@@ -278,10 +279,10 @@ func GetFileACLs(file string) (*FileACLs, error) {
 }
 
 func getFirstACL(xattr []byte) ([]byte, ACL, error) {
-	remaining := int(xattr[0])
+	remaining := int(xattr[0])+2
 	remainingBytes := xattr[remaining:]
 	xattr = xattr[2:remaining]
-	beforeOps := int(xattr[0])
+	beforeOps := int(xattr[0])+2
 	xattr = xattr[:beforeOps]
 	metadataSz := int(xattr[2])
 	xattr = xattr[metadataSz:]
