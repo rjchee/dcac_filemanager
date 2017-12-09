@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -70,7 +68,7 @@ func serve(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error) {
 				// abuse the bad gateway http response
 				return http.StatusBadGateway, nil
 			}
-			userAttr := usersAttr.AddSub(user.Username)
+			userAttr := usersAttr.AddSub(user.Username, dcac.ADDMOD)
 			println("Acquired user attr")
 			defer userAttr.Drop()
 			// try to grab the admin attribute as well (which will fail if the user is not an Admin)
