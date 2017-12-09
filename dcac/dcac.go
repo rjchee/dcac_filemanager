@@ -304,22 +304,28 @@ func ModifyFileACLs(file string, add, remove *FileACLs) error {
 	if err != nil {
 		return err
 	}
-	if add != nil && add.Read != nil || remove != nil && remove.Read != nil {
+	if add == nil {
+		add = &FileACLs{}
+	}
+	if remove == nil {
+		remove = &FileACLs{}
+	}
+	if add.Read != nil || remove.Read != nil {
 		if err := SetFileRdACL(file, a.Read.AddAndRemoveAll(add.Read, remove.Read)); err != nil {
 			return err
 		}
 	}
-	if add != nil && add.Write != nil || remove != nil && remove.Write != nil {
+	if add.Write != nil || remove.Write != nil {
 		if err := SetFileWrACL(file, a.Write.AddAndRemoveAll(add.Write, remove.Write)); err != nil {
 			return err
 		}
 	}
-	if add != nil && add.Execute != nil || remove != nil && remove.Execute != nil {
+	if add.Execute != nil || remove.Execute != nil {
 		if err := SetFileRdACL(file, a.Execute.AddAndRemoveAll(add.Execute, remove.Execute)); err != nil {
 			return err
 		}
 	}
-	if add != nil && add.Modify != nil || remove != nil && remove.Modify != nil {
+	if add.Modify != nil || remove.Modify != nil {
 		if err := SetFileMdACL(file, a.Modify.AddAndRemoveAll(add.Modify, remove.Modify)); err != nil {
 			return err
 		}
