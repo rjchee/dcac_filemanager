@@ -207,6 +207,21 @@ func (m *FileManager) Setup() error {
 	adminAttr := fmAttr.AddSub("admin", dcac.ADDMOD)
 	defer adminAttr.Drop()
 	if _, err := os.Stat(m.DCACDir); os.IsNotExist(err) {
+		// initialize the ACL for everything
+		filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				log.Printf("Could not open %s\n", path)
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			err = dcac.SetFileMdACL(path, adminAttr.ACL())
+			if err != nil {
+				log.Printf("Error setting modify ACL for %s\n", path)
+			}
+			return nil
+		})
 		// create a gateway attribute for gatekeeper
 		usersAttr := fmAttr.AddSub("users", dcac.ADDMOD)
 		if err := os.Mkdir(m.DCACDir, 0700); err != nil {
