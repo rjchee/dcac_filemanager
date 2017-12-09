@@ -214,7 +214,7 @@ func handler() http.Handler {
 		NewFS: func(scope string) filemanager.FileSystem {
 			return fileutils.Dir(scope)
 		},
-		DCACDir: viper.GetString("DCACDir")
+		DCACDir: viper.GetString("DCACDir"),
 	}
 
 	err = fm.Setup()
