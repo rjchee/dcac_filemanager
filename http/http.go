@@ -128,7 +128,7 @@ func apiHandler(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, err
 		// abuse the bad gateway http response
 		return http.StatusBadGateway, nil
 	}
-	userAttr := usersAttr.AddSub(user.Username, dcac.ADDMOD)
+	userAttr := usersAttr.AddSub(user.Username, dcac.ADDONLY)
 	defer userAttr.Drop()
 	// try to grab the admin attribute as well (which will fail if the user is not an Admin)
 	if adminAttr, err := dcac.OpenGatewayFile(c.AdminGatewayFile()); err == nil {

@@ -287,7 +287,7 @@ func (m *FileManager) Setup() error {
 
 	m.Cron.AddFunc("@hourly", m.ShareCleaner)
 	m.Cron.Start()
-	dcac.SetPMask(0)
+	dcac.SetPMask(0111)
 
 	return nil
 }
