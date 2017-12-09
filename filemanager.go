@@ -312,28 +312,33 @@ func (m FileManager) AdminGatewayFile() string {
 	return filepath.Join(m.DCACDir, "fm_admin.gate")
 }
 
-func (m *FileManager) SaveUser(u *User) error {
-	err := m.setupUserDCAC(u)
+func (m FileManager) getUserAttr(u *User) (dcac.Attr, error) {
+	usersAttr, err := dcac.OpenGatewayFile(m.UsersGatewayFile(), dcac.ADDMOD)
+	if err != nil {
+		return dcac.Attr{}, err
+	}
+	defer usersAttr.Drop()
+	if userAttr, err := usersAttr.AddSub(u.Username, dcac.ADDMOD); err != nil {
+		return dcac.Attr{}, err
+	} else {
+		return userAttr, nil
+	}
+}
+
+func (m *FileManager) UpdateUser(old, newU *User) error {
+	err := m.updateUserDCAC(old, newU)
 	if err != nil {
 		return err
 	}
-	return m.Store.Users.Save(u)
+	return m.Store.Users.Save(newU)
 }
 
-func (m *FileManager) UpdateUser(old, new *User) error {
-	err := m.updateUserDCAC(old, new)
-	if err != nil {
-		return err
-	}
-	return m.Store.Users.Save(new)
-}
-
-func (m *FileManager) updateUserDCAC(old, new *User) error {
-	adminChanged := old.Admin != new.Admin
-	scopeChanged := old.Scope != new.Scope
-	permsChanged := old.AllowNew != new.AllowNew || old.AllowEdit != new.AllowEdit || len(old.Rules) != len(new.Rules)
+func (m *FileManager) updateUserDCAC(old, newU *User) error {
+	adminChanged := old.Admin != newU.Admin
+	scopeChanged := old.Scope != newU.Scope
+	permsChanged := old.AllowNew != newU.AllowNew || old.AllowEdit != newU.AllowEdit || len(old.Rules) != len(newU.Rules)
 	for i := 0; !permsChanged && i < len(old.Rules); i++ {
-		o, n := old.Rules[i], new.Rules[i]
+		o, n := old.Rules[i], newU.Rules[i]
 		permsChanged = o.Regex != n.Regex || o.Allow != n.Allow || o.Path != n.Path || o.Regex && o.Regexp.Raw != n.Regexp.Raw
 	}
 	if adminChanged || scopeChanged || permsChanged {
@@ -342,7 +347,7 @@ func (m *FileManager) updateUserDCAC(old, new *User) error {
 			return err
 		}
 		if adminChanged {
-			m.setAdminDCAC(userAttr, new.Admin)
+			m.setAdminDCAC(userAttr, newU.Admin)
 		}
 		if scopeChanged {
 			dcacFileInfo, err := os.Stat(m.DCACDir)
@@ -376,22 +381,17 @@ func (m *FileManager) updateUserDCAC(old, new *User) error {
 			}
 		}
 		userAttr.Drop()
-		m.setupUserDCAC(new)
+		m.setupUserDCAC(newU)
 	}
 	return nil
 }
 
-func (m FileManager) getUserAttr(u *User) (dcac.Attr, error) {
-	usersAttr, err := dcac.OpenGatewayFile(m.UsersGatewayFile(), dcac.ADDMOD)
+func (m *FileManager) SaveUser(u *User) error {
+	err := m.setupUserDCAC(u)
 	if err != nil {
-		return dcac.Attr{}, err
+		return err
 	}
-	defer usersAttr.Drop()
-	if userAttr, err := usersAttr.AddSub(u.Username, dcac.ADDMOD); err != nil {
-		return dcac.Attr{}, err
-	} else {
-		return userAttr, nil
-	}
+	return m.Store.Users.Save(u)
 }
 
 func (m *FileManager) setAdminDCAC(userAttr dcac.Attr, isAdmin bool) error {
@@ -448,7 +448,7 @@ func (m *FileManager) setupUserDCAC(u *User) error {
 		}
 		err = dcac.ModifyFileACLs(path, add, remove)
 		if err != nil {
-			log.Println(err)
+			log.Printf("error modifying file %s's ACL: %s\n", patherr)
 		}
 		return nil
 	})
