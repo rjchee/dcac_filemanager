@@ -111,7 +111,7 @@ func (a AttrName) String() string {
 
 func (a AttrName) SubAttr(name string) AttrName {
 	newAttrName := make([]string, len(a))
-	copy(a, newAttrName)
+	copy(newAttrName, a)
 	return append(newAttrName, name)
 }
 
