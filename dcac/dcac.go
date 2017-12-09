@@ -373,11 +373,10 @@ func ModifyFileACLs(file string, add, remove *FileACLs) error {
 
 func lookupAttrName(fd int) (AttrName, error) {
 	var buff [256]C.char
-	err := toError(C.dcac_get_attr_name(C.int(fd), &buff[0], 256))
-	if err == nil {
-		return NewAttrName(C.GoString(&buff[0])), nil
+	if err := toError(C.dcac_get_attr_name(C.int(fd), &buff[0], 256)); err != nil {
+		return nil, err
 	}
-	return nil, err
+	return NewAttrName(C.GoString(&buff[0])), nil
 }
 
 func GetAttrList() ([]Attr, error) {

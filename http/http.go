@@ -121,7 +121,7 @@ func apiHandler(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, err
 	// TODO: check if locking is required
 	//runtime.LockOSThread()
 	//defer runtime.UnlockOSThread()
-	usersAttr, gatewayErr := dcac.OpenGatewayFile(c.UsersGatewayFile(), dcac.ADDONLY)
+	usersAttr, gatewayErr := dcac.OpenGatewayFile(c.UsersGatewayFile(), dcac.ADDMOD)
 	if gatewayErr != nil {
 		log.Printf("error opening gateway: %s\n", gatewayErr)
 		usersAttr.Drop()
