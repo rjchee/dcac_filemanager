@@ -162,15 +162,13 @@ func (a Attr) ACL() ACL {
 }
 
 func (a Attr) AddSub(name string, flag int) (Attr, error) {
-	sub := a.Name.SubAttr(name)
-	subName := sub.String()
-	subCS := C.CString(subName)
-	defer freeCS(subCS)
-	fd, err := C.add_subattr(C.int(a.fd), subCS, C.int(flag))
+	suffixCS := C.CString(name)
+	defer freeCS(suffixCS)
+	fd, err := C.add_subattr(C.int(a.fd), suffixCS, C.int(flag))
 	if err != nil {
 		return Attr{}, err
 	}
-	return Attr{sub, int(fd)}, nil
+	return Attr{a.Name.SubAttr(name), int(fd)}, nil
 }
 
 func (a Attr) Drop() error {
